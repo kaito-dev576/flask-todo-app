@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>タスク編集 | Todo App</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+<body>
+    <main>
+        <h1>タスクを編集</h1>
+
+        {% for message in get_flashed_messages() %}
+            <p class="flash-message">{{ message }}</p>
+        {% endfor %}
+
+        <form
+            action="{{ url_for('edit_task', task_id=task.id) }}"
+            method="POST"
+        >
+            <div>
+                <label for="name">タスク名</label>
+                <input
+                    type="text"
+                    id="name"
+                    name="name"
+                    value="{{ task.name }}"
+                    required
+                >
+            </div>
+
+            <div>
+                <label for="priority">優先度</label>
+                <select id="priority" name="priority">
+                    <option
+                        value="高"
+                        {% if task.priority == "高" %}selected{% endif %}
+                    >
+                        高
+                    </option>
+
+                    <option
+                        value="中"
+                        {% if task.priority == "中" %}selected{% endif %}
+                    >
+                        中
+                    </option>
+
+                    <option
+                        value="低"
+                        {% if task.priority == "低" %}selected{% endif %}
+                    >
+                        低
+                    </option>
+                </select>
+            </div>
+
+            <div>
+                <label for="deadline">期限</label>
+                <input
+                    type="date"
+                    id="deadline"
+                    name="deadline"
+                    value="{{ task.deadline }}"
+                    required
+                >
+            </div>
+
+            <button type="submit">保存する</button>
+            <a href="{{ url_for('index') }}">キャンセル</a>
+        </form>
+    </main>
+</body>
+</html>

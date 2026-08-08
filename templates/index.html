@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo App</title>
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+<body>
+    <h1>Todo App</h1>
+
+    {% for message in get_flashed_messages() %}
+    <!--CSSで通知用のデザインを適用するためのクラス-->
+        <p class="flash-message">{{ message }}</p>
+    {% endfor %}
+
+    <p>今日やることを管理しよう</p>
+
+    <!--共通のカードデザイン,期限切れ専用のデザイン-->
+    <section class="stats">
+        <article class="stat-card">
+            <span>すべて</span>
+            <strong>{{ stats.total }}</strong>
+        </article>
+
+        <article class="stat-card">
+            <span>未完了</span>
+            <strong>{{ stats.pending }}</strong>
+        </article>
+
+        <article class="stat-card">
+            <span>完了</span>
+            <strong>{{ stats.completed }}</strong>
+        </article>
+
+        <article class="stat-card stat-overdue">
+            <span>期限切れ</span>
+            <strong>{{ stats.overdue }}</strong>
+        </article>
+    </section>
+
+    <h2>タスクを追加</h2>
+
+    <!--入力したデータの送信先、データをサーバーへ送る方法-->
+    <form class="search-form" action="/add" method="POST">
+        <div>
+            <!--入力欄-->
+            <label for="name">タスク名</label>
+            <input
+                type="text"
+                id="name"
+                name="name"
+                required
+            >
+        </div>
+
+        <div>
+            <label for="priority">優先度</label>
+            <!--複数の選択肢から1つを選ぶ欄-->
+            <select id="priority" name="priority">
+                <option value="高">高</option>
+                <option value="中">中</option>
+                <option value="低">低</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="deadline">期限</label>
+            <input
+                type="date"
+                id="deadline"
+                name="deadline"
+                required
+            >
+        </div>
+
+        <button type="submit">追加する</button>
+    </form>
+
+    <!--入力内容がURLに表示される送信方法-->
+    <form action="{{ url_for('index') }}" method="GET">
+        
+
+        <!--検索用の入力欄を作成,未入力時に薄い案内文を表示-->
+        <input
+            type="search"
+            id="q"
+            name="q"
+            value="{{ keyword }}"
+            placeholder="タスク名を入力"
+        >
+        <button type="submit">検索</button>
+        <a href="{{ url_for('index') }}">検索を解除</a>
+    </form>
+
+    <h2>タスク一覧</h2>
+
+    {% if tasks %}
+    <!--箇条書きリスト-->
+        <ul class="task-list">
+            {% for task in tasks %}
+                <li class="task-item {% if task.done %}task-done{% endif %}">
+                    <div class="task-content">
+                        <span class="status">
+                            {% if task.done %}✓{% else %}○{% endif %}
+                        </span>
+
+                        <div>
+                            <strong class="task-name">
+                                {{ task.name }}
+                            </strong>
+
+                            <div class="task-meta">
+                                <span
+                                    class="
+                                        priority
+                                        {% if task.priority == '高' %}
+                                            priority-high
+                                        {% elif task.priority == '中' %}
+                                            priority-medium
+                                        {% else %}
+                                            priority-low
+                                        {% endif %}
+                                    "
+                                >
+                                    {{ task.priority }}
+                                </span>
+
+                                <span>期限：{{ task.deadline }}</span>
+
+                                {% if not task.done and task.deadline < today %}
+                                    <span class="overdue-label">
+                                        期限切れ
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="task-actions">
+                        {% if not task.done %}
+                            <form
+                                action="{{ url_for('complete_task', task_id=task.id) }}"
+                                method="POST"
+                            >
+                                <button type="submit">完了</button>
+                            </form>
+                        {% endif %}
+
+                        <a
+                            class="edit-link"
+                            href="{{ url_for('edit_task', task_id=task.id) }}"
+                        >
+                            編集
+                        </a>
+
+                        <form
+                            action="{{ url_for('delete_task', task_id=task.id) }}"
+                            method="POST"
+                            onsubmit="return confirm('このタスクを削除しますか？');"
+                        >
+                            <button class="delete-button" type="submit">
+                                削除
+                            </button>
+                        </form>
+                    </div>
+                </li>
+            {% else %}
+                <li class="empty-message">
+                    表示するタスクはありません。
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>タスクはまだありません。</p>
+    {% endif %}
+
+</body>
+</html>
