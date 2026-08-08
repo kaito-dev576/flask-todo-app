@@ -56,8 +56,8 @@ TodoAppLearning/
 リポジトリを取得します。
 
 ```powershell
-git clone <リポジトリのURL>
-cd TodoAppLearning
+git clone https://github.com/kaito-dev576/flask-todo-app.git
+cd flask-todo-app
 ```
 
 仮想環境を作成します。
