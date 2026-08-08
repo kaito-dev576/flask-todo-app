@@ -61,5 +61,119 @@ class TodoAppTestCase(unittest.TestCase):
         )
 
 
+    #タスクを作成し、完了URLへPOST送信したあと、doneが 1になったか確認
+    def test_task_can_be_completed(self):
+        database.create_task(
+            "完了テスト",
+            "中",
+            "2026-08-31",
+        )
+        task = database.get_tasks()[0]
+
+        response = self.client.post(
+            f"/complete/{task['id']}",
+            follow_redirects=True,
+        )
+
+        updated_task = database.get_task(task["id"])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(updated_task["done"], 1)
+
+
+    #変更後の名前・優先度・期限が保存されたか確認
+    def test_task_can_be_edited(self):
+        database.create_task(
+            "編集前",
+            "低",
+            "2026-08-31",
+        )
+        task = database.get_tasks()[0]
+
+        response = self.client.post(
+            f"/edit/{task['id']}",
+            data={
+                "name": "編集後",
+                "priority": "高",
+                "deadline": "2026-09-01",
+            },
+            follow_redirects=True,
+        )
+
+        updated_task = database.get_task(task["id"])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(updated_task["name"], "編集後")
+        self.assertEqual(updated_task["priority"], "高")
+        self.assertEqual(
+            updated_task["deadline"],
+            "2026-09-01",
+        )
+
+
+    #削除後の取得結果が Noneになることを確認
+    def test_task_can_be_deleted(self):
+        database.create_task(
+            "削除テスト",
+            "低",
+            "2026-08-31",
+        )
+        task = database.get_tasks()[0]
+
+        response = self.client.post(
+            f"/delete/{task['id']}",
+            follow_redirects=True,
+        )
+
+        deleted_task = database.get_task(task["id"])
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(deleted_task)
+
+
+    #検索結果に一致するタスクだけが表示されることを確認
+    def test_tasks_can_be_searched(self):
+        database.create_task(
+            "Pythonを勉強する",
+            "高",
+            "2026-08-31",
+        )
+        database.create_task(
+            "買い物へ行く",
+            "低",
+            "2026-08-31",
+        )
+
+        response = self.client.get("/?q=Python")
+
+        self.assertIn(
+            "Pythonを勉強する".encode("utf-8"),
+            response.data,
+        )
+        self.assertNotIn(
+            "買い物へ行く".encode("utf-8"),
+            response.data,
+        )
+
+
+    #空白だけのタスクが保存されないことを確認
+    def test_blank_task_name_is_rejected(self):
+        response = self.client.post(
+            "/add",
+            data={
+                "name": "   ",
+                "priority": "高",
+                "deadline": "2026-08-31",
+            },
+            follow_redirects=True,
+        )
+
+        self.assertIn(
+            "タスク名を入力してください。".encode("utf-8"),
+            response.data,
+        )
+        self.assertEqual(len(database.get_tasks()), 0)
+
+
 if __name__ == "__main__":
     unittest.main()

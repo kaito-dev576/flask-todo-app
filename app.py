@@ -1,6 +1,7 @@
 #読み込み
 from flask import Flask, flash, redirect, render_template, request, url_for
 from datetime import date
+import os
 from database import (
     complete_task as complete_task_in_db,
     create_task,
@@ -16,8 +17,11 @@ from database import (
 #Flaskアプリ本体を作成
 app = Flask(__name__)
 
-#メッセージを一時保存するために必要な設定
-app.config["SECRET_KEY"] = "development-secret-key"
+#Windowsなどに設定された SECRET_KEYを取得
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "development-secret-key",
+)
 
 #実行
 init_db()
@@ -137,6 +141,7 @@ def edit_task(task_id):
     return render_template("edit.html", task=task)
 
 
-#app.pyを直接実行
+#普段の起動ではデバッグモードが無効
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = os.environ.get("FLASK_DEBUG") == "1"
+    app.run(debug=debug_mode)

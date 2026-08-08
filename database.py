@@ -58,7 +58,7 @@ def get_tasks(keyword=""):
             SELECT *
             FROM tasks
             WHERE name LIKE ?
-            ORDER BY id DESC
+            ORDER BY done, deadline
             """,
             (f"%{keyword}%",),
         ).fetchall()
@@ -68,7 +68,7 @@ def get_tasks(keyword=""):
             """
             SELECT *
             FROM tasks
-            ORDER BY id DESC
+            ORDER BY done, deadline
             """
         ).fetchall()
 
