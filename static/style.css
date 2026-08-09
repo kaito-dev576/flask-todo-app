@@ -20,6 +20,22 @@ h1 {
     color: #1d3557;
 }
 
+.login-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    border-radius: 10px;
+    background-color: #e8f0fe;
+}
+
+.login-status p,
+.login-status form {
+    margin: 0;
+}
+
 /*子要素を格子状に並べます,同じ幅の列を4つ作ります*/
 .stats {
     display: grid;

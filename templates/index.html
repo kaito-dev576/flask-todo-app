@@ -12,6 +12,27 @@
 <body>
     <h1>Todo App</h1>
 
+    {% if session.get("user_id") %}
+        <div class="login-status">
+            <p>
+                ログイン中：{{ session["username"] }}
+            </p>
+
+            <form
+                action="{{ url_for('logout') }}"
+                method="POST"
+            >
+                <button type="submit">ログアウト</button>
+            </form>
+        </div>
+    {% else %}
+        <p>
+            <a href="{{ url_for('login') }}">ログイン</a>
+            /
+            <a href="{{ url_for('register') }}">新規登録</a>
+        </p>
+    {% endif %}
+
     {% for message in get_flashed_messages() %}
     <!--CSSで通知用のデザインを適用するためのクラス-->
         <p class="flash-message">{{ message }}</p>

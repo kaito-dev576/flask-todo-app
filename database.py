@@ -6,6 +6,15 @@ DATABASE_NAME = "todo.db"
 #データベースを初期化する関数
 def init_db():
     connection = sqlite3.connect(DATABASE_NAME)
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL
+        )
+        """
+    )
 
     #カテゴリを保存する新しい表を作ります
     #カテゴリの識別番号
@@ -28,7 +37,8 @@ def init_db():
             priority TEXT NOT NULL,
             deadline TEXT NOT NULL,
             done INTEGER NOT NULL DEFAULT 0,
-            category_id INTEGER REFERENCES categories(id)
+            category_id INTEGER REFERENCES categories(id),
+            user_id INTEGER REFERENCES users(id)
         )
         """
     )
@@ -52,6 +62,34 @@ def init_db():
             """
         )
 
+    if "user_id" not in column_names:
+        connection.execute(
+            """
+            ALTER TABLE tasks
+            ADD COLUMN user_id INTEGER
+            REFERENCES users(id)
+            """
+        )
+
+        first_user = connection.execute(
+            """
+            SELECT id
+            FROM users
+            ORDER BY id
+            LIMIT 1
+            """
+        ).fetchone()
+
+        if first_user is not None:
+            connection.execute(
+                """
+                UPDATE tasks
+                SET user_id = ?
+                WHERE user_id IS NULL
+                """,
+                (first_user[0],),
+            )
+
     connection.executemany(
         """
         INSERT OR IGNORE INTO categories (name)
@@ -73,7 +111,8 @@ def create_task(
     name,
     priority,
     deadline,
-    category_id=None,
+    category_id,
+    user_id,
 ):
     connection = sqlite3.connect(DATABASE_NAME)
 
@@ -83,15 +122,17 @@ def create_task(
             name,
             priority,
             deadline,
-            category_id
+            category_id,
+            user_id
         )
-        VALUES (?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?)
         """,
         (
             name,
             priority,
             deadline,
             category_id,
+            user_id,
         ),
     )
 
@@ -100,7 +141,7 @@ def create_task(
 
 
 #保存されている全タスクを取得する関数,検索キーワードを受け取る
-def get_tasks(keyword="", category_id=None):
+def get_tasks(user_id, keyword="", category_id=None):
     connection = sqlite3.connect(DATABASE_NAME)
     connection.row_factory = sqlite3.Row
 
@@ -111,10 +152,10 @@ def get_tasks(keyword="", category_id=None):
         FROM tasks
         LEFT JOIN categories
             ON tasks.category_id = categories.id
-        WHERE 1 = 1
+        WHERE tasks.user_id = ?
     """
 
-    parameters = []
+    parameters = [user_id]
 
     if keyword:
         query += """
@@ -142,16 +183,16 @@ def get_tasks(keyword="", category_id=None):
     return tasks
 
 #タスクを完了させる関数
-def complete_task(task_id):
+def complete_task(task_id, user_id):
     connection = sqlite3.connect(DATABASE_NAME)
 
     connection.execute(
         """
         UPDATE tasks
         SET done = 1
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
         """,
-        (task_id,),
+        (task_id, user_id),
     )
 
     connection.commit()
@@ -159,22 +200,22 @@ def complete_task(task_id):
 
 
 #タスクを削除する関数
-def delete_task(task_id):
+def delete_task(task_id, user_id):
     connection = sqlite3.connect(DATABASE_NAME)
 
     connection.execute(
         """
         DELETE FROM tasks
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
         """,
-        (task_id,),
+        (task_id, user_id),
     )
 
     connection.commit()
     connection.close()
 
 
-def get_task(task_id):
+def get_task(task_id, user_id):
     connection = sqlite3.connect(DATABASE_NAME)
     connection.row_factory = sqlite3.Row
 
@@ -182,9 +223,9 @@ def get_task(task_id):
         """
         SELECT *
         FROM tasks
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
         """,
-        (task_id,),
+        (task_id, user_id),
 
     #該当するデータを1件だけ取得
     ).fetchone()
@@ -199,7 +240,8 @@ def update_task(
     name,
     priority,
     deadline,
-    category_id=None,
+    category_id,
+    user_id,
 ):
     connection = sqlite3.connect(DATABASE_NAME)
 
@@ -211,7 +253,7 @@ def update_task(
             priority = ?,
             deadline = ?,
             category_id = ?
-        WHERE id = ?
+        WHERE id = ? AND user_id = ?
         """,
         (
             name,
@@ -219,6 +261,7 @@ def update_task(
             deadline,
             category_id,
             task_id,
+            user_id,
         ),
     )
 
@@ -226,7 +269,7 @@ def update_task(
     connection.close()
 
 
-def get_task_stats(today):
+def get_task_stats(today, user_id):
     connection = sqlite3.connect(DATABASE_NAME)
     connection.row_factory = sqlite3.Row
 
@@ -247,8 +290,9 @@ def get_task_stats(today):
                 END
             ) AS overdue
         FROM tasks
+        WHERE user_id = ?
         """,
-        (today,),
+        (today, user_id),
     ).fetchone()
 
     connection.close()
@@ -272,3 +316,41 @@ def get_categories():
     connection.close()
 
     return categories
+
+def create_user(username, password_hash):
+    connection = sqlite3.connect(DATABASE_NAME)
+
+    connection.execute(
+        """
+        INSERT INTO users (
+            username,
+            password_hash
+        )
+        VALUES (?, ?)
+        """,
+        (
+            username,
+            password_hash,
+        ),
+    )
+
+    connection.commit()
+    connection.close()
+
+
+def get_user_by_username(username):
+    connection = sqlite3.connect(DATABASE_NAME)
+    connection.row_factory = sqlite3.Row
+
+    user = connection.execute(
+        """
+        SELECT *
+        FROM users
+        WHERE username = ?
+        """,
+        (username,),
+    ).fetchone()
+
+    connection.close()
+
+    return user

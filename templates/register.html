@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>新規登録 | Todo App</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+<body>
+    <main>
+        <h1>新規登録</h1>
+
+        {% for message in get_flashed_messages() %}
+            <p class="flash-message">{{ message }}</p>
+        {% endfor %}
+
+        <form
+            action="{{ url_for('register') }}"
+            method="POST"
+        >
+            <div>
+                <label for="username">ユーザー名</label>
+
+                <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    minlength="3"
+                    maxlength="50"
+                    autocomplete="username"
+                    required
+                >
+            </div>
+
+            <div>
+                <label for="password">パスワード</label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    minlength="8"
+                    maxlength="128"
+                    autocomplete="new-password"
+                    required
+                >
+            </div>
+
+            <button type="submit">登録する</button>
+        </form>
+
+        <p>
+            すでにアカウントを持っている方は、
+            <a href="{{ url_for('login') }}">ログイン</a>
+        </p>
+    </main>
+</body>
+</html>
