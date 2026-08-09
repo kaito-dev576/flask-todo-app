@@ -100,45 +100,46 @@ def create_task(
 
 
 #保存されている全タスクを取得する関数,検索キーワードを受け取る
-def get_tasks(keyword=""):
+def get_tasks(keyword="", category_id=None):
     connection = sqlite3.connect(DATABASE_NAME)
-    #列名で使えるようにする
     connection.row_factory = sqlite3.Row
 
-    #タスクとカテゴリの情報を結合
-    #タスクのカテゴリIDと、カテゴリテーブルのIDが同じデータを結び付けます
-    if keyword:
-        tasks = connection.execute(
-            """
-            SELECT
-                tasks.*,
-                categories.name AS category_name
-            FROM tasks
-            LEFT JOIN categories
-                ON tasks.category_id = categories.id
-            WHERE tasks.name LIKE ?
-            ORDER BY tasks.done, tasks.deadline
-            """,
-            (f"%{keyword}%",),
-        ).fetchall()
-    else:
+    query = """
+        SELECT
+            tasks.*,
+            categories.name AS category_name
+        FROM tasks
+        LEFT JOIN categories
+            ON tasks.category_id = categories.id
+        WHERE 1 = 1
+    """
 
-        tasks = connection.execute(
-            """
-           SELECT
-                tasks.*,
-                categories.name AS category_name
-            FROM tasks
-            LEFT JOIN categories
-                ON tasks.category_id = categories.id
-            ORDER BY tasks.done, tasks.deadline
-            """
-        ).fetchall()
+    parameters = []
+
+    if keyword:
+        query += """
+            AND tasks.name LIKE ?
+        """
+        parameters.append(f"%{keyword}%")
+
+    if category_id is not None:
+        query += """
+            AND tasks.category_id = ?
+        """
+        parameters.append(category_id)
+
+    query += """
+        ORDER BY tasks.done, tasks.deadline
+    """
+
+    tasks = connection.execute(
+        query,
+        parameters,
+    ).fetchall()
 
     connection.close()
 
     return tasks
-
 
 #タスクを完了させる関数
 def complete_task(task_id):
@@ -193,16 +194,32 @@ def get_task(task_id):
     return task
 
 
-def update_task(task_id, name, priority, deadline):
+def update_task(
+    task_id,
+    name,
+    priority,
+    deadline,
+    category_id=None,
+):
     connection = sqlite3.connect(DATABASE_NAME)
 
     connection.execute(
         """
         UPDATE tasks
-        SET name = ?, priority = ?, deadline = ?
+        SET
+            name = ?,
+            priority = ?,
+            deadline = ?,
+            category_id = ?
         WHERE id = ?
         """,
-        (name, priority, deadline, task_id),
+        (
+            name,
+            priority,
+            deadline,
+            category_id,
+            task_id,
+        ),
     )
 
     connection.commit()

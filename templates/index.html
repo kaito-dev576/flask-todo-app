@@ -98,10 +98,13 @@
     </form>
 
     <!--入力内容がURLに表示される送信方法-->
-    <form class="search-form" action="{{ url_for('index') }}" method="GET">
-        
+    <h2>タスクを検索・絞り込み</h2>
 
-        <!--検索用の入力欄を作成,未入力時に薄い案内文を表示-->
+    <form
+        class="search-form"
+        action="{{ url_for('index') }}"
+        method="GET"
+    >
         <input
             type="search"
             id="q"
@@ -109,8 +112,31 @@
             value="{{ keyword }}"
             placeholder="タスク名を入力"
         >
-        <button type="submit">検索</button>
-        <a href="{{ url_for('index') }}">検索を解除</a>
+
+        <select name="category_id">
+            <option value="">すべてのカテゴリ</option>
+
+            {% for category in categories %}
+                <option
+                    value="{{ category.id }}"
+                    {% if selected_category_id == category.id %}
+                        selected
+                    {% endif %}
+                >
+                    {{ category.name }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <button type="submit">
+            検索
+        </button>
+
+        {% if keyword or selected_category_id %}
+            <a href="{{ url_for('index') }}">
+                検索を解除
+            </a>
+        {% endif %}
     </form>
 
     <h2>タスク一覧</h2>

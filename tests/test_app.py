@@ -97,8 +97,10 @@ class TodoAppTestCase(unittest.TestCase):
         self.assertEqual(updated_task["done"], 1)
 
 
-    #変更後の名前・優先度・期限が保存されたか確認
     def test_task_can_be_edited(self):
+        categories = database.get_categories()
+        category = categories[1]
+
         database.create_task(
             "編集前",
             "低",
@@ -112,6 +114,7 @@ class TodoAppTestCase(unittest.TestCase):
                 "name": "編集後",
                 "priority": "高",
                 "deadline": "2026-09-01",
+                "category_id": str(category["id"]),
             },
             follow_redirects=True,
         )
@@ -124,6 +127,10 @@ class TodoAppTestCase(unittest.TestCase):
         self.assertEqual(
             updated_task["deadline"],
             "2026-09-01",
+        )
+        self.assertEqual(
+            updated_task["category_id"],
+            category["id"],
         )
 
 
@@ -189,6 +196,39 @@ class TodoAppTestCase(unittest.TestCase):
             response.data,
         )
         self.assertEqual(len(database.get_tasks()), 0)
+
+
+    def test_tasks_can_be_filtered_by_category(self):
+        categories = database.get_categories()
+        work_category = categories[0]
+        study_category = categories[1]
+
+        database.create_task(
+            "会議の準備",
+            "高",
+            "2026-08-31",
+            work_category["id"],
+        )
+
+        database.create_task(
+            "Pythonを勉強する",
+            "中",
+            "2026-08-31",
+            study_category["id"],
+        )
+
+        response = self.client.get(
+            f"/?category_id={study_category['id']}"
+        )
+
+        self.assertIn(
+            "Pythonを勉強する".encode("utf-8"),
+            response.data,
+        )
+        self.assertNotIn(
+            "会議の準備".encode("utf-8"),
+            response.data,
+        )
 
 
 if __name__ == "__main__":

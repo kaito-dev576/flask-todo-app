@@ -31,22 +31,26 @@ init_db()
 #直後の関数を実行
 @app.route("/")
 def index():
-    #入力の前後にある余分な空白を取り除きます
     keyword = request.args.get("q", "").strip()
-    #今日の日付を取得
+    category_id = request.args.get(
+        "category_id",
+        type=int,
+    )
     today = date.today().isoformat()
 
-    tasks = get_tasks(keyword)
-    #データベースからカテゴリ一覧を取得
+    tasks = get_tasks(
+        keyword,
+        category_id,
+    )
     categories = get_categories()
     stats = get_task_stats(today)
-    
-    #取得した一覧をHTMLへ渡します
+
     return render_template(
-        "index.html", 
+        "index.html",
         tasks=tasks,
         categories=categories,
         keyword=keyword,
+        selected_category_id=category_id,
         today=today,
         stats=stats,
     )
@@ -109,21 +113,23 @@ def delete_task(task_id):
     return redirect(url_for("index"))
 
 
-#編集画面の表示と、変更内容の保存の両方を受け付けます
 @app.route("/edit/<int:task_id>", methods=["GET", "POST"])
 def edit_task(task_id):
-    #編集対象をデータベースから取得
     task = get_task(task_id)
+    categories = get_categories()
 
     if task is None:
         flash("指定されたタスクはありません。")
         return redirect(url_for("index"))
 
-    #フォームから受け取った新しい値をデータベースへ保存
     if request.method == "POST":
-        name = request.form.get("name","").strip()
-        priority = request.form.get("priority","")
-        deadline = request.form.get("deadline","")
+        name = request.form.get("name", "").strip()
+        priority = request.form.get("priority", "")
+        deadline = request.form.get("deadline", "")
+        category_id = request.form.get(
+            "category_id",
+            type=int,
+        )
 
         if not name:
             flash("タスク名を入力してください。")
@@ -133,6 +139,12 @@ def edit_task(task_id):
 
         if priority not in ["高", "中", "低"]:
             flash("優先度が正しくありません。")
+            return redirect(
+                url_for("edit_task", task_id=task_id)
+            )
+
+        if category_id is None:
+            flash("カテゴリを選択してください。")
             return redirect(
                 url_for("edit_task", task_id=task_id)
             )
@@ -150,12 +162,17 @@ def edit_task(task_id):
             name,
             priority,
             deadline,
+            category_id,
         )
 
         flash("タスクを更新しました。")
         return redirect(url_for("index"))
 
-    return render_template("edit.html", task=task)
+    return render_template(
+        "edit.html",
+        task=task,
+        categories=categories,
+    )
 
 
 #普段の起動ではデバッグモードが無効

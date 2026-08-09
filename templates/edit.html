@@ -59,6 +59,28 @@
             </div>
 
             <div>
+                <label for="category_id">カテゴリ</label>
+
+                <select
+                    id="category_id"
+                    name="category_id"
+                    required
+                >
+                    {% for category in categories %}
+                        <!--現在のタスクに設定されているカテゴリを、最初から選択状態-->
+                        <option
+                            value="{{ category.id }}"
+                            {% if task.category_id == category.id %}
+                                selected
+                            {% endif %}
+                        >
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
                 <label for="deadline">期限</label>
                 <input
                     type="date"
