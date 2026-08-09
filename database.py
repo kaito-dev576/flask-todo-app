@@ -7,10 +7,19 @@ DATABASE_NAME = "todo.db"
 def init_db():
     connection = sqlite3.connect(DATABASE_NAME)
 
-    #SQL命令を送る,まだ存在しない場合だけ作る,
-    #整数,重複しない識別番号,1、2、3と自動で増える
-    #値なしで保存できない
-    #0：未完了
+    #カテゴリを保存する新しい表を作ります
+    #カテゴリの識別番号
+    #カテゴリ名を保存
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE
+        )
+        """
+    )
+
+    #タスクがどのカテゴリに所属するかをカテゴリIDで保存
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS tasks (
@@ -18,28 +27,72 @@ def init_db():
             name TEXT NOT NULL,
             priority TEXT NOT NULL,
             deadline TEXT NOT NULL,
-            done INTEGER NOT NULL DEFAULT 0
+            done INTEGER NOT NULL DEFAULT 0,
+            category_id INTEGER REFERENCES categories(id)
         )
         """
     )
 
-    #変更を確定
+    columns = connection.execute(
+        "PRAGMA table_info(tasks)"
+    ).fetchall()
+
+    #列名だけのリストを作ります
+    column_names = [
+        column[1]
+        for column in columns
+    ]
+
+    if "category_id" not in column_names:
+        connection.execute(
+            """
+            ALTER TABLE tasks
+            ADD COLUMN category_id INTEGER
+            REFERENCES categories(id)
+            """
+        )
+
+    connection.executemany(
+        """
+        INSERT OR IGNORE INTO categories (name)
+        VALUES (?)
+        """,
+        [
+            ("仕事",),
+            ("学習",),
+            ("生活",),
+        ],
+    )
+
     connection.commit()
-    #接続を終了
     connection.close()
 
 
 #タスクを保存する関数
-def create_task(name, priority, deadline):
+def create_task(
+    name,
+    priority,
+    deadline,
+    category_id=None,
+):
     connection = sqlite3.connect(DATABASE_NAME)
 
-    #SQLiteへSQL命令
     connection.execute(
         """
-        INSERT INTO tasks (name, priority, deadline)
-        VALUES (?, ?, ?)
+        INSERT INTO tasks (
+            name,
+            priority,
+            deadline,
+            category_id
+        )
+        VALUES (?, ?, ?, ?)
         """,
-        (name, priority, deadline),
+        (
+            name,
+            priority,
+            deadline,
+            category_id,
+        ),
     )
 
     connection.commit()
@@ -52,13 +105,19 @@ def get_tasks(keyword=""):
     #列名で使えるようにする
     connection.row_factory = sqlite3.Row
 
+    #タスクとカテゴリの情報を結合
+    #タスクのカテゴリIDと、カテゴリテーブルのIDが同じデータを結び付けます
     if keyword:
         tasks = connection.execute(
             """
-            SELECT *
+            SELECT
+                tasks.*,
+                categories.name AS category_name
             FROM tasks
-            WHERE name LIKE ?
-            ORDER BY done, deadline
+            LEFT JOIN categories
+                ON tasks.category_id = categories.id
+            WHERE tasks.name LIKE ?
+            ORDER BY tasks.done, tasks.deadline
             """,
             (f"%{keyword}%",),
         ).fetchall()
@@ -66,9 +125,13 @@ def get_tasks(keyword=""):
 
         tasks = connection.execute(
             """
-            SELECT *
+           SELECT
+                tasks.*,
+                categories.name AS category_name
             FROM tasks
-            ORDER BY done, deadline
+            LEFT JOIN categories
+                ON tasks.category_id = categories.id
+            ORDER BY tasks.done, tasks.deadline
             """
         ).fetchall()
 
@@ -174,3 +237,21 @@ def get_task_stats(today):
     connection.close()
 
     return stats
+
+
+#categoriesテーブルの全件を取得し、ID順に返します
+def get_categories():
+    connection = sqlite3.connect(DATABASE_NAME)
+    connection.row_factory = sqlite3.Row
+
+    categories = connection.execute(
+        """
+        SELECT *
+        FROM categories
+        ORDER BY id
+        """
+    ).fetchall()
+
+    connection.close()
+
+    return categories

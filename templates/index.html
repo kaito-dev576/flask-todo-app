@@ -45,9 +45,12 @@
     <h2>タスクを追加</h2>
 
     <!--入力したデータの送信先、データをサーバーへ送る方法-->
-    <form class="search-form" action="/add" method="POST">
+    <form
+        class="add-form"
+        action="{{ url_for('add_task') }}"
+        method="POST"
+    >
         <div>
-            <!--入力欄-->
             <label for="name">タスク名</label>
             <input
                 type="text"
@@ -59,11 +62,25 @@
 
         <div>
             <label for="priority">優先度</label>
-            <!--複数の選択肢から1つを選ぶ欄-->
             <select id="priority" name="priority">
                 <option value="高">高</option>
-                <option value="中">中</option>
+                <option value="中" selected>中</option>
                 <option value="低">低</option>
+            </select>
+        </div>
+
+        <div>
+            <label for="category_id">カテゴリ</label>
+            <select
+                id="category_id"
+                name="category_id"
+                required
+            >
+                {% for category in categories %}
+                    <option value="{{ category.id }}">
+                        {{ category.name }}
+                    </option>
+                {% endfor %}
             </select>
         </div>
 
@@ -81,7 +98,7 @@
     </form>
 
     <!--入力内容がURLに表示される送信方法-->
-    <form action="{{ url_for('index') }}" method="GET">
+    <form class="search-form" action="{{ url_for('index') }}" method="GET">
         
 
         <!--検索用の入力欄を作成,未入力時に薄い案内文を表示-->
@@ -129,7 +146,15 @@
                                     {{ task.priority }}
                                 </span>
 
-                                <span>期限：{{ task.deadline }}</span>
+                                {% if task.category_name %}
+                                    <span>
+                                        カテゴリ：{{ task.category_name }}
+                                    </span>
+                                {% endif %}
+
+                                <span>
+                                    期限：{{ task.deadline }}
+                                </span>
 
                                 {% if not task.done and task.deadline < today %}
                                     <span class="overdue-label">

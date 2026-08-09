@@ -44,22 +44,38 @@ class TodoAppTestCase(unittest.TestCase):
         )
 
     def test_task_can_be_added(self):
+        #テスト用データベースから最初のカテゴリを取得
+        categories = database.get_categories()
+        category = categories[0]
+
         response = self.client.post(
             "/add",
             data={
                 "name": "テスト用タスク",
                 "priority": "高",
                 "deadline": "2026-08-31",
+                "category_id": str(category["id"]),
             },
             follow_redirects=True,
         )
+
+        tasks = database.get_tasks()
+        added_task = tasks[0]
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(
             "テスト用タスク".encode("utf-8"),
             response.data,
         )
-
+        self.assertEqual(
+            added_task["category_id"],
+            category["id"],
+        )
+        #選択したカテゴリ名が正しく取得できるか確認
+        self.assertEqual(
+            added_task["category_name"],
+            category["name"],
+        )
 
     #タスクを作成し、完了URLへPOST送信したあと、doneが 1になったか確認
     def test_task_can_be_completed(self):

@@ -102,7 +102,7 @@ form > div {
 追加ボタン：内容に合わせたauto*/
 .add-form {
     display: grid;
-    grid-template-columns: 2fr 1fr 1.4fr auto;
+    grid-template-columns: 2fr 1fr 1.2fr 1.4fr auto;
     align-items: end;
     gap: 12px;
     margin-bottom: 32px;
