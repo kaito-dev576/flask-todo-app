@@ -12,7 +12,7 @@
 
 ## デモ
 
-- 公開URL：デプロイ完了後に追記
+- 公開URL：https://kaito-todo-app-zvcm.onrender.com
 - ユーザー名：`demo_user`
 - パスワード：`portfolio123`
 
