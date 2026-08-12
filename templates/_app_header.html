@@ -1,0 +1,8 @@
+<header class="mobile-header">
+    <a class="brand brand-icon-only" href="{{ url_for('index') }}" aria-label="ホーム">
+        <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32"><path d="M8 16.5l5 5L24 10.5"/></svg>
+        </span>
+    </a>
+    <span class="user-avatar" aria-hidden="true">{{ session.username[0]|upper }}</span>
+</header>

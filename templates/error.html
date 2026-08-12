@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}{{ code }}{% endblock %}
+{% block body_class %}error-page{% endblock %}
+
+{% block content %}
+<main id="main-content" class="error-layout">
+    <a class="brand brand-icon-only" href="{{ url_for('index') if session.user_id else url_for('login') }}" aria-label="ホーム">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 16.5l5 5L24 10.5"/></svg></span>
+    </a>
+    <section class="error-card">
+        <span class="error-code">{{ code }}</span>
+        <div class="error-illustration" aria-hidden="true">
+            <svg viewBox="0 0 96 96"><circle cx="48" cy="48" r="34"/><path d="M36 41h.01M60 41h.01M34 63c8-8 20-8 28 0"/></svg>
+        </div>
+        <h1>{{ message }}</h1>
+        <p>URLや入力内容をご確認いただくか、ダッシュボードへ戻ってやり直してください。</p>
+        <a class="button primary" href="{{ url_for('index') if session.user_id else url_for('login') }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+            {% if session.user_id %}ダッシュボードへ戻る{% else %}ログインへ戻る{% endif %}
+        </a>
+    </section>
+</main>
+{% endblock %}

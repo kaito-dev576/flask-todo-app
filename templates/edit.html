@@ -1,99 +1,50 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>タスク編集 | Todo App</title>
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='style.css') }}"
-    >
-</head>
-<body>
-    <main>
-        <h1>タスクを編集</h1>
+{% extends "base.html" %}
 
-        {% for message in get_flashed_messages() %}
-            <p class="flash-message">{{ message }}</p>
-        {% endfor %}
+{% block title %}タスクを編集{% endblock %}
+{% block body_class %}app-page edit-page{% endblock %}
+{% block site_header %}{% include "_app_header.html" %}{% endblock %}
 
-        <form
-            action="{{ url_for('edit_task', task_id=task.id) }}"
-            method="POST"
-        >
-            <div>
-                <label for="name">タスク名</label>
-                <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value="{{ task.name }}"
-                    required
-                >
+{% block content %}
+<main id="main-content" class="edit-shell">
+    <a class="back-link" href="{{ url_for('index') }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        ダッシュボードへ戻る
+    </a>
+    <section class="panel edit-card" aria-labelledby="edit-heading">
+        <div class="panel-heading edit-heading">
+            <span class="panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/></svg>
+            </span>
+            <div><span class="eyebrow">EDIT TASK</span><h1 id="edit-heading">タスクを編集</h1></div>
+        </div>
+        <p class="panel-intro">内容を見直して、今の予定に合わせて更新しましょう。</p>
+
+        <form class="form-stack edit-form" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="field">
+                <label for="task-name">タスク名</label>
+                <input id="task-name" name="name" value="{{ task.name }}" maxlength="100" required autofocus>
             </div>
-
-            <div>
-                <label for="priority">優先度</label>
-                <select id="priority" name="priority">
-                    <option
-                        value="高"
-                        {% if task.priority == "高" %}selected{% endif %}
-                    >
-                        高
-                    </option>
-
-                    <option
-                        value="中"
-                        {% if task.priority == "中" %}selected{% endif %}
-                    >
-                        中
-                    </option>
-
-                    <option
-                        value="低"
-                        {% if task.priority == "低" %}selected{% endif %}
-                    >
-                        低
-                    </option>
-                </select>
-            </div>
-
-            <div>
-                <label for="category_id">カテゴリ</label>
-
-                <select
-                    id="category_id"
-                    name="category_id"
-                    required
-                >
+            <div class="field">
+                <label for="task-category">カテゴリ</label>
+                <select id="task-category" name="category_id" required>
                     {% for category in categories %}
-                        <!--現在のタスクに設定されているカテゴリを、最初から選択状態-->
-                        <option
-                            value="{{ category.id }}"
-                            {% if task.category_id == category.id %}
-                                selected
-                            {% endif %}
-                        >
-                            {{ category.name }}
-                        </option>
+                        <option value="{{ category.id }}" {% if task.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
                     {% endfor %}
                 </select>
             </div>
-
-            <div>
-                <label for="deadline">期限</label>
-                <input
-                    type="date"
-                    id="deadline"
-                    name="deadline"
-                    value="{{ task.deadline }}"
-                    required
-                >
+            <div class="field">
+                <label for="task-deadline">期限</label>
+                <input id="task-deadline" type="date" name="deadline" value="{{ task.deadline }}" required>
             </div>
-
-            <button type="submit">保存する</button>
-            <a href="{{ url_for('index') }}">キャンセル</a>
+            <div class="edit-actions">
+                <a class="button secondary" href="{{ url_for('index') }}">キャンセル</a>
+                <button class="button primary" type="submit">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>
+                    変更を保存
+                </button>
+            </div>
         </form>
-    </main>
-</body>
-</html>
+    </section>
+</main>
+{% endblock %}

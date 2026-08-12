@@ -1,254 +1,517 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo App</title>
-    <link
-        rel="stylesheet"
-        href="{{ url_for('static', filename='style.css') }}"
-    >
-</head>
-<body>
-    <h1>Todo App</h1>
+{% extends "base.html" %}
 
-    {% if session.get("user_id") %}
-        <div class="login-status">
-            <p>
-                ログイン中：{{ session["username"] }}
-            </p>
+{% block title %}{{ view_title }}{% endblock %}
+{% block body_class %}workspace-page{% endblock %}
+{% block site_header %}{% include "_app_header.html" %}{% endblock %}
 
-            <form
-                action="{{ url_for('logout') }}"
-                method="POST"
-            >
-                <button type="submit">ログアウト</button>
+{% block content %}
+<div class="workspace-shell">
+    <aside class="sidebar" aria-label="メインナビゲーション">
+        <nav class="sidebar-nav" aria-label="タスクの表示範囲">
+            <a class="{% if selected_view == 'today' %}active{% endif %}"
+               href="{{ url_for('index', view='today') }}">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9"/>
+                    <path d="M12 7v5l3 2"/>
+                </svg>
+                <span>今日</span>
+                <b>{{ navigation_counts.today }}</b>
+            </a>
+        </nav>
+
+        <div class="sidebar-section">
+            <p>カテゴリ</p>
+
+            {% for category in categories %}
+                <a class="category-link {% if selected_category_id == category.id %}active{% endif %}"
+                   href="{{ url_for('index', view=selected_view, category_id=category.id) }}">
+                    <span class="category-mark category-mark-{{ {'勉強': 'study', '運動': 'exercise', '生活': 'life'}.get(category.name, 'other') }}"
+                          aria-hidden="true">
+                        {% if category.name == '勉強' %}
+                            <svg viewBox="0 0 24 24">
+                                <path d="M4 5.5A3.5 3.5 0 0 1 7.5 4H11v16H7.5A3.5 3.5 0 0 0 4 21.5Z"/>
+                                <path d="M20 5.5A3.5 3.5 0 0 0 16.5 4H13v16h3.5a3.5 3.5 0 0 1 3.5 1.5Z"/>
+                            </svg>
+                        {% elif category.name == '運動' %}
+                            <svg viewBox="0 0 24 24">
+                                <path d="M6 8v8M3.5 10v4M18 8v8M20.5 10v4M6 12h12"/>
+                            </svg>
+                        {% elif category.name == '生活' %}
+                            <svg viewBox="0 0 24 24">
+                                <path d="m4 11 8-7 8 7v9h-6v-6h-4v6H4Z"/>
+                            </svg>
+                        {% endif %}
+                    </span>
+
+                    <span>{{ category.name }}</span>
+                </a>
+            {% endfor %}
+        </div>
+
+        <div class="sidebar-user">
+            <span class="user-avatar" aria-hidden="true">
+                {{ session.username[0]|upper }}
+            </span>
+
+            <span>
+                <strong>{{ session.username }}</strong>
+                <small>マイワークスペース</small>
+            </span>
+
+            <form class="logout-form"
+                  action="{{ url_for('logout') }}"
+                  method="post">
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token }}">
+
+                <button class="logout-button" type="submit">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M10 17l5-5-5-5M15 12H3M15 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"/>
+                    </svg>
+                    <span>ログアウト</span>
+                </button>
             </form>
         </div>
-    {% else %}
-        <p>
-            <a href="{{ url_for('login') }}">ログイン</a>
-            /
-            <a href="{{ url_for('register') }}">新規登録</a>
-        </p>
-    {% endif %}
+    </aside>
 
-    {% for message in get_flashed_messages() %}
-    <!--CSSで通知用のデザインを適用するためのクラス-->
-        <p class="flash-message">{{ message }}</p>
-    {% endfor %}
+    <main id="main-content" class="task-workspace">
+        <header class="workspace-heading">
+            <div>
+                <h1>{{ view_title }}</h1>
 
-    <p>今日やることを管理しよう</p>
+                {% if selected_view == 'today' %}
+                    <p>今日までのタスクが {{ tasks|length }}件あります。</p>
+                {% elif selected_view == 'upcoming' %}
+                    <p>これから予定しているタスクを確認できます。</p>
+                {% elif selected_view == 'completed' %}
+                    <p>完了したタスクの記録です。</p>
+                {% else %}
+                    <p>すべてのタスクを期限ごとに整理しています。</p>
+                {% endif %}
+            </div>
 
-    <!--共通のカードデザイン,期限切れ専用のデザイン-->
-    <section class="stats">
-        <article class="stat-card">
-            <span>すべて</span>
-            <strong>{{ stats.total }}</strong>
-        </article>
+            <details class="quick-add" id="quick-add">
+                <summary class="button primary">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    タスクを追加
+                </summary>
 
-        <article class="stat-card">
-            <span>未完了</span>
-            <strong>{{ stats.pending }}</strong>
-        </article>
+                <form action="{{ url_for('add_task_route') }}"
+                      method="post">
+                    <input type="hidden"
+                           name="csrf_token"
+                           value="{{ csrf_token }}">
 
-        <article class="stat-card">
-            <span>完了</span>
-            <strong>{{ stats.completed }}</strong>
-        </article>
+                    <input type="hidden"
+                           name="return_to"
+                           value="{{ request.full_path }}">
 
-        <article class="stat-card stat-overdue">
-            <span>期限切れ</span>
-            <strong>{{ stats.overdue }}</strong>
-        </article>
-    </section>
+                    <div class="quick-name">
+                        <label class="sr-only" for="task-name">
+                            タスク名
+                        </label>
 
-    <h2>タスクを追加</h2>
+                        <input id="task-name"
+                               name="name"
+                               maxlength="100"
+                               placeholder="タスク名を入力…"
+                               required>
+                    </div>
 
-    <!--入力したデータの送信先、データをサーバーへ送る方法-->
-    <form
-        class="add-form"
-        action="{{ url_for('add_task') }}"
-        method="POST"
-    >
-        <div>
-            <label for="name">タスク名</label>
-            <input
-                type="text"
-                id="name"
-                name="name"
-                required
-            >
-        </div>
+                    <label class="sr-only" for="task-category">
+                        カテゴリ
+                    </label>
 
-        <div>
-            <label for="priority">優先度</label>
-            <select id="priority" name="priority">
-                <option value="高">高</option>
-                <option value="中" selected>中</option>
-                <option value="低">低</option>
-            </select>
-        </div>
+                    <select id="task-category"
+                            name="category_id"
+                            aria-label="カテゴリ"
+                            required>
+                        <option value="" selected disabled>
+                            すべてのカテゴリ
+                        </option>
 
-        <div>
-            <label for="category_id">カテゴリ</label>
-            <select
-                id="category_id"
-                name="category_id"
-                required
-            >
+                        {% for category in categories %}
+                            <option value="{{ category.id }}">
+                                {{ category.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <label class="sr-only" for="task-deadline">
+                        期限
+                    </label>
+
+                    <input id="task-deadline"
+                           type="date"
+                           name="deadline"
+                           value="{{ today }}"
+                           aria-label="期限"
+                           required>
+
+                    <button class="button primary" type="submit">
+                        追加
+                    </button>
+                </form>
+            </details>
+        </header>
+
+        <form class="task-toolbar"
+              method="get"
+              role="search">
+            <input type="hidden"
+                   name="view"
+                   value="{{ selected_view }}">
+
+            <div class="search-field">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="m20 20-4-4"/>
+                </svg>
+
+                <label class="sr-only" for="task-search">
+                    タスク名で検索
+                </label>
+
+                <input id="task-search"
+                       type="search"
+                       name="q"
+                       value="{{ keyword }}"
+                       placeholder="タスクを検索">
+            </div>
+
+            <label class="sr-only" for="category-filter">
+                カテゴリ
+            </label>
+
+            <select id="category-filter" name="category_id">
+                <option value="">すべてのカテゴリ</option>
+
                 {% for category in categories %}
-                    <option value="{{ category.id }}">
+                    <option value="{{ category.id }}"
+                            {% if selected_category_id == category.id %}selected{% endif %}>
                         {{ category.name }}
                     </option>
                 {% endfor %}
             </select>
-        </div>
 
-        <div>
-            <label for="deadline">期限</label>
-            <input
-                type="date"
-                id="deadline"
-                name="deadline"
-                required
-            >
-        </div>
+            <button class="button secondary toolbar-submit"
+                    type="submit">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="m20 20-4-4"/>
+                </svg>
+                <span>検索</span>
+            </button>
 
-        <button type="submit">追加する</button>
-    </form>
+            {% if keyword or selected_category_id or selected_sort != 'deadline' %}
+                <a class="clear-filter"
+                   href="{{ url_for('index', view=selected_view) }}">
+                    解除
+                </a>
+            {% endif %}
+        </form>
 
-    <!--入力内容がURLに表示される送信方法-->
-    <h2>タスクを検索・絞り込み</h2>
+        <div class="task-groups">
+            {% if task_groups %}
+                {% for group_name, group_tasks in task_groups %}
+                    <section class="task-group"
+                             aria-labelledby="group-{{ loop.index }}">
+                        <header>
+                            <h2 id="group-{{ loop.index }}">
+                                {{ group_name }}
+                            </h2>
+                            <span>{{ group_tasks|length }}</span>
+                        </header>
 
-    <form
-        class="search-form"
-        action="{{ url_for('index') }}"
-        method="GET"
-    >
-        <input
-            type="search"
-            id="q"
-            name="q"
-            value="{{ keyword }}"
-            placeholder="タスク名を入力"
-        >
+                        <ul class="task-list">
+                            {% for task in group_tasks %}
+                                <li class="task-row {% if task.done %}is-done{% endif %}">
+                                    <form action="{{ url_for('complete_task_route', task_id=task.id) }}"
+                                          method="post">
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token }}">
 
-        <select name="category_id">
-            <option value="">すべてのカテゴリ</option>
+                                        <input type="hidden"
+                                               name="return_to"
+                                               value="{{ request.full_path }}">
 
-            {% for category in categories %}
-                <option
-                    value="{{ category.id }}"
-                    {% if selected_category_id == category.id %}
-                        selected
-                    {% endif %}
-                >
-                    {{ category.name }}
-                </option>
-            {% endfor %}
-        </select>
+                                        <button class="check-button"
+                                                type="submit"
+                                                aria-label="{% if task.done %}{{ task.name }}を未完了に戻す{% else %}{{ task.name }}を完了にする{% endif %}">
+                                            {% if task.done %}
+                                                <svg viewBox="0 0 24 24"
+                                                     aria-hidden="true">
+                                                    <path d="m5 12 4 4L19 6"/>
+                                                </svg>
+                                            {% endif %}
+                                        </button>
+                                    </form>
 
-        <button type="submit">
-            検索
-        </button>
+                                    <!--
+                                        タスク内容は通常のdivにしています。
+                                        ここを押しても編集画面は開きません。
+                                    -->
+                                    <div class="task-summary">
+                                        <span class="task-title">
+                                            {{ task.name }}
+                                        </span>
 
-        {% if keyword or selected_category_id %}
-            <a href="{{ url_for('index') }}">
-                検索を解除
-            </a>
-        {% endif %}
-    </form>
+                                        <span class="task-meta">
+                                            <span class="category">
+                                                <span class="category-mark category-mark-{{ {'勉強': 'study', '運動': 'exercise', '生活': 'life'}.get(task.category_name, 'other') }}"
+                                                      aria-hidden="true">
+                                                    {% if task.category_name == '勉強' %}
+                                                        <svg viewBox="0 0 24 24">
+                                                            <path d="M4 5.5A3.5 3.5 0 0 1 7.5 4H11v16H7.5A3.5 3.5 0 0 0 4 21.5Z"/>
+                                                            <path d="M20 5.5A3.5 3.5 0 0 0 16.5 4H13v16h3.5a3.5 3.5 0 0 1 3.5 1.5Z"/>
+                                                        </svg>
+                                                    {% elif task.category_name == '運動' %}
+                                                        <svg viewBox="0 0 24 24">
+                                                            <path d="M6 8v8M3.5 10v4M18 8v8M20.5 10v4M6 12h12"/>
+                                                        </svg>
+                                                    {% elif task.category_name == '生活' %}
+                                                        <svg viewBox="0 0 24 24">
+                                                            <path d="m4 11 8-7 8 7v9h-6v-6h-4v6H4Z"/>
+                                                        </svg>
+                                                    {% endif %}
+                                                </span>
 
-    <h2>タスク一覧</h2>
+                                                {{ task.category_name }}
+                                            </span>
 
-    {% if tasks %}
-    <!--箇条書きリスト-->
-        <ul class="task-list">
-            {% for task in tasks %}
-                <li class="task-item {% if task.done %}task-done{% endif %}">
-                    <div class="task-content">
-                        <span class="status">
-                            {% if task.done %}✓{% else %}○{% endif %}
-                        </span>
+                                        </span>
+                                    </div>
 
-                        <div>
-                            <strong class="task-name">
-                                {{ task.name }}
-                            </strong>
-
-                            <div class="task-meta">
-                                <span
-                                    class="
-                                        priority
-                                        {% if task.priority == '高' %}
-                                            priority-high
-                                        {% elif task.priority == '中' %}
-                                            priority-medium
-                                        {% else %}
-                                            priority-low
+                                    <span class="task-deadline {% if not task.done and task.deadline < today %}overdue{% elif not task.done and task.deadline == today %}today{% endif %}">
+                                        {% if not task.done and task.deadline < today %}
+                                            期限切れ ·
+                                        {% elif not task.done and task.deadline == today %}
+                                            今日 ·
                                         {% endif %}
-                                    "
-                                >
-                                    {{ task.priority }}
-                                </span>
 
-                                {% if task.category_name %}
-                                    <span>
-                                        カテゴリ：{{ task.category_name }}
+                                        {{ task.deadline|display_date }}
                                     </span>
-                                {% endif %}
 
-                                <span>
-                                    期限：{{ task.deadline }}
-                                </span>
+                                    <div class="row-actions">
+                                        <!--
+                                            この鉛筆ボタンだけが編集画面を開きます。
+                                        -->
+                                        <button class="icon-button"
+                                                type="button"
+                                                data-open-editor
+                                                data-task-id="{{ task.id }}"
+                                                data-task-name="{{ task.name }}"
+                                                data-task-category="{{ task.category_id }}"
+                                                data-task-deadline="{{ task.deadline }}"
+                                                aria-label="{{ task.name }}を編集"
+                                                title="編集">
+                                            <svg viewBox="0 0 24 24"
+                                                 aria-hidden="true">
+                                                <path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z"/>
+                                            </svg>
+                                        </button>
 
-                                {% if not task.done and task.deadline < today %}
-                                    <span class="overdue-label">
-                                        期限切れ
-                                    </span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
+                                        <form action="{{ url_for('delete_task_route', task_id=task.id) }}"
+                                              method="post"
+                                              data-confirm="{{ task.name }}">
+                                            <input type="hidden"
+                                                   name="csrf_token"
+                                                   value="{{ csrf_token }}">
 
-                    <div class="task-actions">
-                        {% if not task.done %}
-                            <form
-                                action="{{ url_for('complete_task', task_id=task.id) }}"
-                                method="POST"
-                            >
-                                <button type="submit">完了</button>
-                            </form>
-                        {% endif %}
+                                            <input type="hidden"
+                                                   name="return_to"
+                                                   value="{{ request.full_path }}">
 
-                        <a
-                            class="edit-link"
-                            href="{{ url_for('edit_task', task_id=task.id) }}"
-                        >
-                            編集
-                        </a>
-
-                        <form
-                            action="{{ url_for('delete_task', task_id=task.id) }}"
-                            method="POST"
-                            onsubmit="return confirm('このタスクを削除しますか？');"
-                        >
-                            <button class="delete-button" type="submit">
-                                削除
-                            </button>
-                        </form>
-                    </div>
-                </li>
+                                            <button class="icon-button danger-button"
+                                                    type="submit"
+                                                    aria-label="{{ task.name }}を削除"
+                                                    title="削除">
+                                                <svg viewBox="0 0 24 24"
+                                                     aria-hidden="true">
+                                                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"/>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </section>
+                {% endfor %}
             {% else %}
-                <li class="empty-message">
-                    表示するタスクはありません。
-                </li>
-            {% endfor %}
-        </ul>
-    {% else %}
-        <p>タスクはまだありません。</p>
-    {% endif %}
+                <section class="empty-state">
+                    <span aria-hidden="true">
+                        <svg viewBox="0 0 48 48">
+                            <path d="M12 9h24a4 4 0 0 1 4 4v28H8V13a4 4 0 0 1 4-4Z"/>
+                            <path d="M16 21h16M16 29h11M18 6v7M30 6v7"/>
+                        </svg>
+                    </span>
 
-</body>
-</html>
+                    <h2>
+                        {% if has_filters %}
+                            該当するタスクはありません
+                        {% else %}
+                            ここはまだ空です
+                        {% endif %}
+                    </h2>
+
+                    <p>
+                        {% if has_filters %}
+                            検索条件を変えてみてください。
+                        {% else %}
+                            最初のタスクを追加して、今日を始めましょう。
+                        {% endif %}
+                    </p>
+
+                    {% if has_filters %}
+                        <a href="{{ url_for('index', view=selected_view) }}">
+                            条件を解除
+                        </a>
+                    {% endif %}
+                </section>
+            {% endif %}
+        </div>
+    </main>
+</div>
+
+<nav class="bottom-nav"
+     aria-label="モバイルナビゲーション">
+    <a class="{% if selected_view == 'today' %}active{% endif %}"
+       href="{{ url_for('index', view='today') }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/>
+            <path d="M12 7v5l3 2"/>
+        </svg>
+        <span>今日</span>
+    </a>
+
+    <a class="{% if selected_view == 'upcoming' %}active{% endif %}"
+       href="{{ url_for('index', view='upcoming') }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2"/>
+            <path d="M16 3v4M8 3v4M3 10h18"/>
+        </svg>
+        <span>予定</span>
+    </a>
+
+    <a class="{% if selected_view == 'all' %}active{% endif %}"
+       href="{{ url_for('index', view='all') }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>
+        </svg>
+        <span>すべて</span>
+    </a>
+</nav>
+
+<dialog class="task-drawer"
+        id="edit-drawer"
+        aria-labelledby="drawer-title">
+    <form method="post" data-edit-form>
+        <input type="hidden"
+               name="csrf_token"
+               value="{{ csrf_token }}">
+
+        <input type="hidden"
+               name="return_to"
+               value="{{ request.full_path }}">
+
+        <header>
+            <div>
+                <span>タスクの詳細</span>
+                <h2 id="drawer-title">タスクを編集</h2>
+            </div>
+
+            <button class="icon-button"
+                    type="button"
+                    data-close-drawer
+                    aria-label="閉じる">
+                ×
+            </button>
+        </header>
+
+        <div class="drawer-fields">
+            <div class="field">
+                <label for="edit-name">タスク名</label>
+                <input
+                    id="edit-name"
+                    name="name"
+                    maxlength="100"
+                    required
+                >
+            </div>
+
+            <div class="field">
+                <label for="edit-category">カテゴリ</label>
+                <select
+                    id="edit-category"
+                    name="category_id"
+                    required
+                >
+                    {% for category in categories %}
+                        <option value="{{ category.id }}">
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="field">
+                <label for="edit-deadline">期限</label>
+                <input
+                    id="edit-deadline"
+                    type="date"
+                    name="deadline"
+                    required
+                >
+            </div>
+        </div>
+
+        <footer>
+            <button class="button secondary"
+                    type="button"
+                    data-close-drawer>
+                キャンセル
+            </button>
+
+            <button class="button primary"
+                    type="submit">
+                変更を保存
+            </button>
+        </footer>
+    </form>
+</dialog>
+
+<dialog class="confirm-dialog"
+        id="delete-dialog"
+        aria-labelledby="delete-dialog-title">
+    <form method="dialog">
+        <span class="dialog-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 15H6L5 6M10 11v6M14 11v6"/>
+            </svg>
+        </span>
+
+        <h2 id="delete-dialog-title">
+            タスクを削除しますか？
+        </h2>
+
+        <p>
+            <strong data-dialog-task></strong>
+            を削除すると元に戻せません。
+        </p>
+
+        <div class="dialog-actions">
+            <button class="button secondary" value="cancel">
+                キャンセル
+            </button>
+
+            <button class="button danger" value="confirm">
+                削除する
+            </button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
