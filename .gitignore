@@ -1,4 +1,13 @@
 .venv/
 __pycache__/
 *.pyc
-todo.db
+*.db
+*.db.bak
+*.bak
+.env
+.pytest_cache/
+htmlcov/
+.coverage
+tests/*-runtime.db
+*.log
+*.cmd

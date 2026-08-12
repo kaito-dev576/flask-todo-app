@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: kaito-todo-app
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    healthCheckPath: /healthz
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: DEMO_MODE
+        value: "1"
+      - key: DEMO_USERNAME
+        value: demo_user
+      - key: DEMO_PASSWORD
+        value: portfolio123
